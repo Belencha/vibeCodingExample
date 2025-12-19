@@ -88,9 +88,16 @@ const BudgetOverview = () => {
         return names[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     };
 
-    if (loading) {
-        return <div className="budget-overview">Loading budget data...</div>;
-    }
+  if (loading) {
+    return (
+      <div className="budget-overview">
+        <div className="loader-container">
+          <div className="loader"></div>
+          <p>Loading budget data...</p>
+        </div>
+      </div>
+    );
+  }
 
     if (error) {
         return <div className="budget-overview error">Error: {error}</div>;
