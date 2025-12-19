@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import BudgetItem from '../models/BudgetItem';
+import { fetchBudgetData } from '../services/dataService';
 
 const router = Router();
 
@@ -21,12 +22,57 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // Get budget summary by year
-router.get('/summary/:year', (req: Request, res: Response) => {
+router.get('/summary/:year', async (req: Request, res: Response) => {
   try {
     const year = parseInt(req.params.year);
     
-    // Return hardcoded data immediately - no MongoDB check to avoid delays
-    // If you want to use MongoDB later, uncomment the database code below
+    // Try to fetch real data first
+    const realData = await fetchBudgetData(year);
+    
+    // If we have real data, process and return it
+    if (realData.length > 0) {
+      const incomeItems = realData
+        .filter(item => item.category === 'income')
+        .reduce((acc: any[], item) => {
+          const existing = acc.find(i => i._id === item.type);
+          if (existing) {
+            existing.total += item.amount;
+          } else {
+            acc.push({ _id: item.type, total: item.amount });
+          }
+          return acc;
+        }, []);
+
+      const spendingItems = realData
+        .filter(item => item.category === 'spending')
+        .reduce((acc: any[], item) => {
+          const existing = acc.find(i => i._id === item.type);
+          if (existing) {
+            existing.total += item.amount;
+          } else {
+            acc.push({ _id: item.type, total: item.amount });
+          }
+          return acc;
+        }, []);
+
+      const totalIncome = incomeItems.reduce((sum, item) => sum + item.total, 0);
+      const totalSpending = spendingItems.reduce((sum, item) => sum + item.total, 0);
+
+      return res.json({
+        year,
+        income: {
+          items: incomeItems,
+          total: totalIncome,
+        },
+        spending: {
+          items: spendingItems,
+          total: totalSpending,
+        },
+        balance: totalIncome - totalSpending,
+      });
+    }
+    
+    // Fallback to hardcoded data if real data is not available
     const hardcodedData = getHardcodedBudgetData(year);
     return res.json(hardcodedData);
     
