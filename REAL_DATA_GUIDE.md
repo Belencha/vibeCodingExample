@@ -171,3 +171,4 @@ Para ver qué está pasando cuando se intentan obtener datos:
 - Los formatos de datos pueden cambiar entre años
 - Siempre verifica que los datos obtenidos sean correctos antes de usarlos en producción
 
+

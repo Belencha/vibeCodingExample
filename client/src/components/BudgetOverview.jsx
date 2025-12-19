@@ -136,7 +136,7 @@ const BudgetOverview = () => {
                     </select>
                 </div>
             </div>
-            
+
             {summary && summary.dataSource && (
                 <div className={`data-source-indicator ${summary.dataSource === 'real' ? 'real' : 'hardcoded'}`}>
                     {summary.dataSource === 'real' ? (
