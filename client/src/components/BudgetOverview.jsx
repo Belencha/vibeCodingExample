@@ -2,40 +2,40 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './BudgetOverview.css';
 
 const BudgetOverview = () => {
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [availableYears, setAvailableYears] = useState([]);
+    const [year, setYear] = useState(new Date().getFullYear());
+    const [summary, setSummary] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [availableYears, setAvailableYears] = useState([]);
 
-  const fetchAvailableYears = useCallback(async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/budget/years');
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const years = await response.json();
-      setAvailableYears(years);
-      if (years.length > 0) {
-        setYear((prevYear) => prevYear || years[0]);
-      }
-    } catch (err) {
-      console.error('Error fetching years:', err);
-      // Set default years if API fails
-      setAvailableYears([2024, 2023, 2022, 2021, 2020]);
-      setYear((prevYear) => prevYear || 2024);
-    }
-  }, []);
+    const fetchAvailableYears = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/budget/years');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const years = await response.json();
+            setAvailableYears(years);
+            if (years.length > 0) {
+                setYear((prevYear) => prevYear || years[0]);
+            }
+        } catch (err) {
+            console.error('Error fetching years:', err);
+            // Set default years if API fails
+            setAvailableYears([2024, 2023, 2022, 2021, 2020]);
+            setYear((prevYear) => prevYear || 2024);
+        }
+    }, []);
 
-  useEffect(() => {
-    fetchAvailableYears();
-  }, [fetchAvailableYears]);
+    useEffect(() => {
+        fetchAvailableYears();
+    }, [fetchAvailableYears]);
 
-  useEffect(() => {
-    if (year) {
-      fetchBudgetSummary(year);
-    }
-  }, [year]);
+    useEffect(() => {
+        if (year) {
+            fetchBudgetSummary(year);
+        }
+    }, [year]);
 
     const fetchBudgetSummary = async (selectedYear) => {
         setLoading(true);

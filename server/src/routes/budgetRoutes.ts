@@ -22,52 +22,52 @@ router.get('/', async (req: Request, res: Response) => {
 
 // Get budget summary by year
 router.get('/summary/:year', async (req: Request, res: Response) => {
-  try {
-    const year = parseInt(req.params.year);
-    
-    // Try to get data from database first (if MongoDB is connected)
     try {
-      const [income, spending] = await Promise.all([
-        BudgetItem.aggregate([
-          { $match: { year, category: 'income' } },
-          { $group: { _id: '$type', total: { $sum: '$amount' } } },
-        ]),
-        BudgetItem.aggregate([
-          { $match: { year, category: 'spending' } },
-          { $group: { _id: '$type', total: { $sum: '$amount' } } },
-        ]),
-      ]);
+        const year = parseInt(req.params.year);
 
-      // If we have data in database, use it
-      if (income.length > 0 || spending.length > 0) {
-        const totalIncome = income.reduce((sum, item) => sum + item.total, 0);
-        const totalSpending = spending.reduce((sum, item) => sum + item.total, 0);
+        // Try to get data from database first (if MongoDB is connected)
+        try {
+            const [income, spending] = await Promise.all([
+                BudgetItem.aggregate([
+                    { $match: { year, category: 'income' } },
+                    { $group: { _id: '$type', total: { $sum: '$amount' } } },
+                ]),
+                BudgetItem.aggregate([
+                    { $match: { year, category: 'spending' } },
+                    { $group: { _id: '$type', total: { $sum: '$amount' } } },
+                ]),
+            ]);
 
-        return res.json({
-          year,
-          income: {
-            items: income,
-            total: totalIncome,
-          },
-          spending: {
-            items: spending,
-            total: totalSpending,
-          },
-          balance: totalIncome - totalSpending,
-        });
-      }
-    } catch (dbError) {
-      // MongoDB not connected or error - fall through to hardcoded data
-      console.log('Database not available, using hardcoded data');
+            // If we have data in database, use it
+            if (income.length > 0 || spending.length > 0) {
+                const totalIncome = income.reduce((sum, item) => sum + item.total, 0);
+                const totalSpending = spending.reduce((sum, item) => sum + item.total, 0);
+
+                return res.json({
+                    year,
+                    income: {
+                        items: income,
+                        total: totalIncome,
+                    },
+                    spending: {
+                        items: spending,
+                        total: totalSpending,
+                    },
+                    balance: totalIncome - totalSpending,
+                });
+            }
+        } catch (dbError) {
+            // MongoDB not connected or error - fall through to hardcoded data
+            console.log('Database not available, using hardcoded data');
+        }
+
+        // Return hardcoded sample data (works without MongoDB)
+        const hardcodedData = getHardcodedBudgetData(year);
+        return res.json(hardcodedData);
+    } catch (error) {
+        console.error('Error in budget summary route:', error);
+        res.status(500).json({ error: 'Error fetching budget summary', details: error.message });
     }
-
-    // Return hardcoded sample data (works without MongoDB)
-    const hardcodedData = getHardcodedBudgetData(year);
-    return res.json(hardcodedData);
-  } catch (error) {
-    console.error('Error in budget summary route:', error);
-    res.status(500).json({ error: 'Error fetching budget summary', details: error.message });
-  }
 });
 
 // Hardcoded sample data for prototype
@@ -117,25 +117,25 @@ function getHardcodedBudgetData(year: number) {
 
 // Get available years
 router.get('/years', async (req: Request, res: Response) => {
-  try {
-    // Try to get years from database
     try {
-      const years = await BudgetItem.distinct('year');
-      if (years.length > 0) {
-        return res.json(years.sort((a, b) => b - a));
-      }
-    } catch (dbError) {
-      // MongoDB not connected - fall through to hardcoded years
-      console.log('Database not available, using hardcoded years');
+        // Try to get years from database
+        try {
+            const years = await BudgetItem.distinct('year');
+            if (years.length > 0) {
+                return res.json(years.sort((a, b) => b - a));
+            }
+        } catch (dbError) {
+            // MongoDB not connected - fall through to hardcoded years
+            console.log('Database not available, using hardcoded years');
+        }
+
+        // Return hardcoded years (works without MongoDB)
+        return res.json([2024, 2023, 2022, 2021, 2020]);
+    } catch (error) {
+        console.error('Error in years route:', error);
+        // Even if there's an error, return hardcoded years
+        res.json([2024, 2023, 2022, 2021, 2020]);
     }
-    
-    // Return hardcoded years (works without MongoDB)
-    return res.json([2024, 2023, 2022, 2021, 2020]);
-  } catch (error) {
-    console.error('Error in years route:', error);
-    // Even if there's an error, return hardcoded years
-    res.json([2024, 2023, 2022, 2021, 2020]);
-  }
 });
 
 // Create/update budget item
