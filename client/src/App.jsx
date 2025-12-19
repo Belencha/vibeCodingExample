@@ -1,13 +1,11 @@
 import React from 'react';
 import './App.css';
+import BudgetOverview from './components/BudgetOverview';
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Welcome to vibeCodingExample</h1>
-        <p>MERN Stack Application</p>
-      </header>
+      <BudgetOverview />
     </div>
   );
 }

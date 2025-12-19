@@ -1,0 +1,166 @@
+.budget-overview {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #333;
+}
+
+.budget-header h1 {
+  margin: 0;
+  color: #282c34;
+}
+
+.year-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.year-selector select {
+  padding: 8px 12px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+}
+
+.budget-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.budget-section {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.budget-section h2 {
+  margin-top: 0;
+  color: #282c34;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 10px;
+}
+
+.budget-section.income h2 {
+  border-bottom-color: #4caf50;
+}
+
+.budget-section.spending h2 {
+  border-bottom-color: #f44336;
+}
+
+.total-amount {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 20px 0;
+  padding: 15px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.income-total {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.spending-total {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.budget-items {
+  margin-top: 20px;
+}
+
+.budget-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: white;
+  border-radius: 4px;
+  border-left: 4px solid #ddd;
+}
+
+.budget-item .item-type {
+  text-transform: capitalize;
+  color: #555;
+}
+
+.budget-item .item-amount {
+  font-weight: bold;
+  color: #333;
+}
+
+.budget-balance {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 30px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.budget-balance h2 {
+  margin-top: 0;
+  color: #282c34;
+}
+
+.balance-amount {
+  font-size: 36px;
+  font-weight: bold;
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.balance-amount.positive {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.balance-amount.negative {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.deficit-warning {
+  color: #c62828;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.error {
+  color: #c62828;
+  text-align: center;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .budget-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+}
+
