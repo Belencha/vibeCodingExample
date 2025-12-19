@@ -4,6 +4,48 @@ import { fetchBudgetData } from '../services/dataService';
 
 const router = Router();
 
+/**
+ * @swagger
+ * /api/budget:
+ *   get:
+ *     summary: Get all budget items
+ *     tags: [Budget]
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter by year
+ *         example: 2024
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           enum: [income, spending]
+ *         description: Filter by category
+ *         example: income
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         description: Filter by type
+ *         example: personal_income_tax
+ *     responses:
+ *       200:
+ *         description: List of budget items
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/BudgetItem'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Get all budget items
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -21,6 +63,34 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/budget/summary/{year}:
+ *   get:
+ *     summary: Get budget summary for a specific year
+ *     tags: [Budget]
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The year to get budget summary for
+ *         example: 2024
+ *     responses:
+ *       200:
+ *         description: Budget summary for the year
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BudgetSummary'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Get budget summary by year
 router.get('/summary/:year', async (req: Request, res: Response) => {
   try {
@@ -171,6 +241,23 @@ function getHardcodedBudgetData(year: number) {
   }
 }
 
+/**
+ * @swagger
+ * /api/budget/years:
+ *   get:
+ *     summary: Get all available years
+ *     tags: [Budget]
+ *     responses:
+ *       200:
+ *         description: List of available years
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: integer
+ *               example: [2024, 2023, 2022, 2021, 2020]
+ */
 // Get available years
 router.get('/years', (req: Request, res: Response) => {
   try {
@@ -203,6 +290,58 @@ router.get('/years', (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/budget:
+ *   post:
+ *     summary: Create a new budget item
+ *     tags: [Budget]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - year
+ *               - category
+ *               - type
+ *               - amount
+ *               - description
+ *             properties:
+ *               year:
+ *                 type: integer
+ *                 example: 2024
+ *               category:
+ *                 type: string
+ *                 enum: [income, spending]
+ *                 example: income
+ *               type:
+ *                 type: string
+ *                 example: personal_income_tax
+ *               amount:
+ *                 type: number
+ *                 example: 95000000000
+ *               description:
+ *                 type: string
+ *                 example: Personal Income Tax (IRPF)
+ *               source:
+ *                 type: string
+ *                 example: https://example.com/data
+ *     responses:
+ *       201:
+ *         description: Budget item created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BudgetItem'
+ *       400:
+ *         description: Bad request - validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 // Create/update budget item
 router.post('/', async (req: Request, res: Response) => {
   try {
