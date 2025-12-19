@@ -22,6 +22,11 @@ app.get('/', (req: Request, res: Response) => {
   res.json({ message: 'Welcome to vibeCodingExample API' });
 });
 
+// Health check route
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});
+
 // API Routes
 app.use('/api/budget', budgetRoutes);
 
