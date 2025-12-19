@@ -136,6 +136,16 @@ const BudgetOverview = () => {
                     </select>
                 </div>
             </div>
+            
+            {summary && summary.dataSource && (
+                <div className={`data-source-indicator ${summary.dataSource === 'real' ? 'real' : 'hardcoded'}`}>
+                    {summary.dataSource === 'real' ? (
+                        <span>✓ Datos reales del gobierno</span>
+                    ) : (
+                        <span>⚠ Datos de demostración (hardcoded)</span>
+                    )}
+                </div>
+            )}
 
             {summary && (
                 <div className="budget-summary">

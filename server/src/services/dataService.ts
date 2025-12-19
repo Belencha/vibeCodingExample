@@ -60,7 +60,7 @@ async function fetchHaciendaCSV(year: number): Promise<any[]> {
   for (const filename of possibleFiles) {
     try {
       const csvUrl = `${getHaciendaCSVUrl(year)}${filename}`;
-      
+
       const response = await axios.get(csvUrl, {
         responseType: 'text',
         timeout: 10000,
@@ -100,10 +100,10 @@ async function fetchDatosGobES(year: number): Promise<any[]> {
     // datos.gob.es catalog API endpoint
     // Note: This is a generic endpoint - you'll need to find the specific dataset ID
     const catalogUrl = `https://datos.gob.es/apidata/catalog/dataset`;
-    
+
     // Search for budget datasets
     const searchUrl = `${catalogUrl}?q=presupuestos+${year}`;
-    
+
     const response = await axios.get(searchUrl, {
       timeout: 10000,
       headers: {
@@ -139,19 +139,19 @@ function normalizeCSVData(csvRecords: any[], year: number): any[] {
   // Get column names (case-insensitive)
   const firstRecord = csvRecords[0];
   const columns = Object.keys(firstRecord);
-  
+
   // Find amount column (try different possible names)
-  const amountColumn = columns.find(col => 
+  const amountColumn = columns.find(col =>
     ['importe', 'amount', 'cantidad', 'valor', 'total', 'euros'].includes(col.toLowerCase())
   );
-  
+
   // Find concept/description column
-  const conceptColumn = columns.find(col => 
+  const conceptColumn = columns.find(col =>
     ['concepto', 'concept', 'descripcion', 'description', 'nombre', 'name', 'tipo'].includes(col.toLowerCase())
   );
-  
+
   // Find category/type column
-  const categoryColumn = columns.find(col => 
+  const categoryColumn = columns.find(col =>
     ['tipo', 'type', 'categoria', 'category', 'clase', 'clasificacion'].includes(col.toLowerCase())
   );
 
@@ -189,10 +189,10 @@ function normalizeCSVData(csvRecords: any[], year: number): any[] {
 
       // Get concept/description
       const concept = conceptColumn ? String(record[conceptColumn] || '') : '';
-      
+
       // Map concept to our type
       const type = mapConceptToType(concept, category);
-      
+
       if (type) {
         budgetItems.push({
           year,
@@ -216,17 +216,17 @@ function normalizeCSVData(csvRecords: any[], year: number): any[] {
  */
 function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
-  
+
   // Remove currency symbols and whitespace
   let cleaned = amountStr.replace(/[€$£¥\s]/g, '');
-  
+
   // Handle Spanish format: 1.234,56 (thousands separator: ., decimal: ,)
   // Or English format: 1,234.56 (thousands separator: ,, decimal: .)
   if (cleaned.includes(',') && cleaned.includes('.')) {
     // Determine which is decimal separator
     const lastComma = cleaned.lastIndexOf(',');
     const lastDot = cleaned.lastIndexOf('.');
-    
+
     if (lastComma > lastDot) {
       // Spanish format: 1.234,56
       cleaned = cleaned.replace(/\./g, '').replace(',', '.');
@@ -249,7 +249,7 @@ function parseAmount(amountStr: string): number {
     // Remove dots (thousands separator)
     cleaned = cleaned.replace(/\./g, '');
   }
-  
+
   const amount = parseFloat(cleaned);
   return isNaN(amount) ? 0 : amount;
 }
@@ -259,7 +259,7 @@ function parseAmount(amountStr: string): number {
  */
 function mapConceptToType(concept: string, category: string): string | null {
   const conceptLower = concept.toLowerCase();
-  
+
   if (category === 'income') {
     if (conceptLower.includes('irpf') || conceptLower.includes('renta')) return 'personal_income_tax';
     if (conceptLower.includes('sociedades') || conceptLower.includes('corporativo')) return 'corporate_tax';
@@ -287,12 +287,12 @@ function mapConceptToType(concept: string, category: string): string | null {
  */
 export async function fetchBudgetData(year: number): Promise<any[]> {
   console.log(`Fetching real budget data for year ${year}...`);
-  
+
   try {
     // Strategy 1: Try Ministerio de Hacienda CSV files
     console.log('Trying Ministerio de Hacienda CSV files...');
     const csvData = await fetchHaciendaCSV(year);
-    
+
     if (csvData.length > 0) {
       const normalized = normalizeCSVData(csvData, year);
       if (normalized.length > 0) {
@@ -300,7 +300,7 @@ export async function fetchBudgetData(year: number): Promise<any[]> {
         return normalized;
       }
     }
-    
+
     // Strategy 2: Try datos.gob.es API
     console.log('Trying datos.gob.es API...');
     const datosGobData = await fetchDatosGobES(year);
@@ -308,7 +308,7 @@ export async function fetchBudgetData(year: number): Promise<any[]> {
       console.log(`✓ Successfully fetched ${datosGobData.length} budget items from datos.gob.es`);
       return datosGobData;
     }
-    
+
     console.log('⚠ No real data available from any source');
     return [];
   } catch (error: any) {
