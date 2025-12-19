@@ -65,29 +65,30 @@ router.get('/summary/:year', async (req: Request, res: Response) => {
 
 // Hardcoded sample data for prototype
 function getHardcodedBudgetData(year: number) {
-  // Spanish budget data (approximate values in millions of euros)
+  // Spanish budget data (values in euros)
   // Based on 2023-2024 Spanish government budget estimates
+  // Amounts are in billions, converted to full euros for display
   
   const incomeItems = [
-    { _id: 'personal_income_tax', total: 95000 }, // IRPF
-    { _id: 'corporate_tax', total: 28000 }, // Impuesto de Sociedades
-    { _id: 'vat', total: 78000 }, // IVA
-    { _id: 'social_security_contributions', total: 120000 }, // Cotizaciones Seguridad Social
-    { _id: 'autonomous_communities_taxes', total: 45000 }, // Impuestos CCAA
-    { _id: 'eu_funds', total: 35000 }, // Fondos UE
-    { _id: 'other_revenues', total: 25000 }, // Otros ingresos
+    { _id: 'personal_income_tax', total: 95000000000 }, // IRPF - 95 billion
+    { _id: 'corporate_tax', total: 28000000000 }, // Impuesto de Sociedades - 28 billion
+    { _id: 'vat', total: 78000000000 }, // IVA - 78 billion
+    { _id: 'social_security_contributions', total: 120000000000 }, // Cotizaciones - 120 billion
+    { _id: 'autonomous_communities_taxes', total: 45000000000 }, // Impuestos CCAA - 45 billion
+    { _id: 'eu_funds', total: 35000000000 }, // Fondos UE - 35 billion
+    { _id: 'other_revenues', total: 25000000000 }, // Otros ingresos - 25 billion
   ];
 
   const spendingItems = [
-    { _id: 'pensions', total: 140000 }, // Pensiones
-    { _id: 'social_security', total: 95000 }, // Seguridad Social (sanidad, desempleo)
-    { _id: 'education', total: 52000 }, // Educación
-    { _id: 'healthcare', total: 75000 }, // Sanidad
-    { _id: 'defense', total: 12000 }, // Defensa
-    { _id: 'infrastructure', total: 18000 }, // Infraestructuras
-    { _id: 'public_administration', total: 35000 }, // Administración Pública
-    { _id: 'debt_interest', total: 32000 }, // Intereses deuda
-    { _id: 'other_spending', total: 28000 }, // Otros gastos
+    { _id: 'pensions', total: 140000000000 }, // Pensiones - 140 billion
+    { _id: 'social_security', total: 95000000000 }, // Seguridad Social - 95 billion
+    { _id: 'education', total: 52000000000 }, // Educación - 52 billion
+    { _id: 'healthcare', total: 75000000000 }, // Sanidad - 75 billion
+    { _id: 'defense', total: 12000000000 }, // Defensa - 12 billion
+    { _id: 'infrastructure', total: 18000000000 }, // Infraestructuras - 18 billion
+    { _id: 'public_administration', total: 35000000000 }, // Administración Pública - 35 billion
+    { _id: 'debt_interest', total: 32000000000 }, // Intereses deuda - 32 billion
+    { _id: 'other_spending', total: 28000000000 }, // Otros gastos - 28 billion
   ];
 
   const totalIncome = incomeItems.reduce((sum, item) => sum + item.total, 0);
