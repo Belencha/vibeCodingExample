@@ -145,7 +145,7 @@ const BudgetOverview = () => {
                             Total: {formatCurrency(summary.income.total)}
                         </div>
                         <div className="chart-container">
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <PieChart>
                                     <Pie
                                         data={prepareChartData(summary.income.items, summary.income.total)}
@@ -153,7 +153,7 @@ const BudgetOverview = () => {
                                         cy="50%"
                                         labelLine={false}
                                         label={({ percentage }) => percentage > 5 ? `${percentage}%` : ''}
-                                        outerRadius={100}
+                                        outerRadius={90}
                                         fill="#8884d8"
                                         dataKey="value"
                                     >
@@ -162,7 +162,7 @@ const BudgetOverview = () => {
                                         ))}
                                     </Pie>
                                     <Tooltip formatter={(value) => formatCurrency(value)} />
-                                    <Legend />
+                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
@@ -188,7 +188,7 @@ const BudgetOverview = () => {
                             Total: {formatCurrency(summary.spending.total)}
                         </div>
                         <div className="chart-container">
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <PieChart>
                                     <Pie
                                         data={prepareChartData(summary.spending.items, summary.spending.total)}
@@ -196,7 +196,7 @@ const BudgetOverview = () => {
                                         cy="50%"
                                         labelLine={false}
                                         label={({ percentage }) => percentage > 5 ? `${percentage}%` : ''}
-                                        outerRadius={100}
+                                        outerRadius={90}
                                         fill="#8884d8"
                                         dataKey="value"
                                     >
@@ -205,7 +205,7 @@ const BudgetOverview = () => {
                                         ))}
                                     </Pie>
                                     <Tooltip formatter={(value) => formatCurrency(value)} />
-                                    <Legend />
+                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
