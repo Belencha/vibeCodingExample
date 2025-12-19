@@ -98,9 +98,30 @@
   color: #555;
 }
 
+.budget-item .item-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .budget-item .item-amount {
   font-weight: bold;
   color: #333;
+}
+
+.budget-item .item-percentage {
+  font-size: 0.9em;
+  color: #666;
+  font-weight: normal;
+}
+
+.chart-container {
+  margin: 20px 0;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .budget-balance {
