@@ -141,7 +141,7 @@ const BudgetOverview = () => {
                     </div>
 
                     <div className="budget-section spending">
-                        <h2>Spending (Gastos)</h2>
+                        <h2>Gastos</h2>
                         <div className="total-amount spending-total">
                             Total: {formatCurrency(summary.spending.total)}
                         </div>
