@@ -126,7 +126,7 @@ const BudgetOverview = () => {
             {summary && (
                 <div className="budget-summary">
                     <div className="budget-section income">
-                        <h2>Income (Ingresos)</h2>
+                        <h2>Ingresos</h2>
                         <div className="total-amount income-total">
                             Total: {formatCurrency(summary.income.total)}
                         </div>
@@ -156,7 +156,7 @@ const BudgetOverview = () => {
                     </div>
 
           <div className="budget-balance">
-            <h2>Balance</h2>
+            <h2>Balance Presupuestario</h2>
             <div className={`balance-amount ${summary.balance >= 0 ? 'positive' : 'negative'}`}>
               {formatCurrency(summary.balance)}
             </div>
