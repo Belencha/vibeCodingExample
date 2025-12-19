@@ -4,7 +4,13 @@ const connectDB = async (): Promise<void> => {
     try {
         const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/vibeCodingExample';
 
-        await mongoose.connect(mongoURI);
+        // Set connection timeout to 2 seconds to avoid long delays
+        const connectionOptions = {
+            serverSelectionTimeoutMS: 2000, // 2 seconds timeout
+            socketTimeoutMS: 2000,
+        };
+
+        await mongoose.connect(mongoURI, connectionOptions);
 
         console.log('MongoDB connected successfully');
     } catch (error) {

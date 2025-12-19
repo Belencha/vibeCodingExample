@@ -21,55 +21,54 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // Get budget summary by year
-router.get('/summary/:year', async (req: Request, res: Response) => {
+router.get('/summary/:year', (req: Request, res: Response) => {
   try {
     const year = parseInt(req.params.year);
     
-    // Check if MongoDB is connected quickly
+    // Return hardcoded data immediately - no MongoDB check to avoid delays
+    // If you want to use MongoDB later, uncomment the database code below
+    const hardcodedData = getHardcodedBudgetData(year);
+    return res.json(hardcodedData);
+    
+    /* MongoDB code (commented out for faster response with hardcoded data)
     const mongoose = require('mongoose');
     const isConnected = mongoose.connection.readyState === 1;
     
-    // Only try database if connected, otherwise go straight to hardcoded data
     if (isConnected) {
-      try {
-        const [income, spending] = await Promise.all([
-          BudgetItem.aggregate([
-            { $match: { year, category: 'income' } },
-            { $group: { _id: '$type', total: { $sum: '$amount' } } },
-          ]),
-          BudgetItem.aggregate([
-            { $match: { year, category: 'spending' } },
-            { $group: { _id: '$type', total: { $sum: '$amount' } } },
-          ]),
-        ]);
-
-        // If we have data in database, use it
-        if (income.length > 0 || spending.length > 0) {
-          const totalIncome = income.reduce((sum, item) => sum + item.total, 0);
-          const totalSpending = spending.reduce((sum, item) => sum + item.total, 0);
-
-          return res.json({
-            year,
-            income: {
-              items: income,
-              total: totalIncome,
-            },
-            spending: {
-              items: spending,
-              total: totalSpending,
-            },
-            balance: totalIncome - totalSpending,
-          });
-        }
-      } catch (dbError) {
-        // Database query failed - fall through to hardcoded data
-        console.log('Database query failed, using hardcoded data');
-      }
+      BudgetItem.aggregate([
+        { $match: { year, category: 'income' } },
+        { $group: { _id: '$type', total: { $sum: '$amount' } } },
+      ]).then((income) => {
+        BudgetItem.aggregate([
+          { $match: { year, category: 'spending' } },
+          { $group: { _id: '$type', total: { $sum: '$amount' } } },
+        ]).then((spending) => {
+          if (income.length > 0 || spending.length > 0) {
+            const totalIncome = income.reduce((sum, item) => sum + item.total, 0);
+            const totalSpending = spending.reduce((sum, item) => sum + item.total, 0);
+            return res.json({
+              year,
+              income: { items: income, total: totalIncome },
+              spending: { items: spending, total: totalSpending },
+              balance: totalIncome - totalSpending,
+            });
+          }
+          // Fall through to hardcoded if no data
+          const hardcodedData = getHardcodedBudgetData(year);
+          res.json(hardcodedData);
+        }).catch(() => {
+          const hardcodedData = getHardcodedBudgetData(year);
+          res.json(hardcodedData);
+        });
+      }).catch(() => {
+        const hardcodedData = getHardcodedBudgetData(year);
+        res.json(hardcodedData);
+      });
+    } else {
+      const hardcodedData = getHardcodedBudgetData(year);
+      res.json(hardcodedData);
     }
-
-    // Return hardcoded sample data immediately (works without MongoDB)
-    const hardcodedData = getHardcodedBudgetData(year);
-    return res.json(hardcodedData);
+    */
   } catch (error) {
     console.error('Error in budget summary route:', error);
     res.status(500).json({ error: 'Error fetching budget summary', details: error.message });
