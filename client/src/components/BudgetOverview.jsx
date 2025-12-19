@@ -58,6 +58,28 @@ const BudgetOverview = () => {
     }).format(amount);
   };
 
+  const formatCategoryName = (type) => {
+    const names = {
+      personal_income_tax: 'Personal Income Tax (IRPF)',
+      corporate_tax: 'Corporate Tax',
+      vat: 'VAT (IVA)',
+      social_security_contributions: 'Social Security Contributions',
+      autonomous_communities_taxes: 'Autonomous Communities Taxes',
+      eu_funds: 'EU Funds',
+      other_revenues: 'Other Revenues',
+      pensions: 'Pensions',
+      social_security: 'Social Security',
+      education: 'Education',
+      healthcare: 'Healthcare',
+      defense: 'Defense',
+      infrastructure: 'Infrastructure',
+      public_administration: 'Public Administration',
+      debt_interest: 'Debt Interest',
+      other_spending: 'Other Spending',
+    };
+    return names[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   if (loading) {
     return <div className="budget-overview">Loading budget data...</div>;
   }
@@ -96,7 +118,7 @@ const BudgetOverview = () => {
             <div className="budget-items">
               {summary.income.items.map((item, index) => (
                 <div key={index} className="budget-item">
-                  <span className="item-type">{item._id}</span>
+                  <span className="item-type">{formatCategoryName(item._id)}</span>
                   <span className="item-amount">{formatCurrency(item.total)}</span>
                 </div>
               ))}
@@ -111,7 +133,7 @@ const BudgetOverview = () => {
             <div className="budget-items">
               {summary.spending.items.map((item, index) => (
                 <div key={index} className="budget-item">
-                  <span className="item-type">{item._id}</span>
+                  <span className="item-type">{formatCategoryName(item._id)}</span>
                   <span className="item-amount">{formatCurrency(item.total)}</span>
                 </div>
               ))}
