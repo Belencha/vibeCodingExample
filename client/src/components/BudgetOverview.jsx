@@ -1,24 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './BudgetOverview.css';
 
 const BudgetOverview = () => {
-    const [year, setYear] = useState(new Date().getFullYear());
-    const [summary, setSummary] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [availableYears, setAvailableYears] = useState([]);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [availableYears, setAvailableYears] = useState([]);
 
-    useEffect(() => {
-        fetchAvailableYears();
-    }, []);
-
-    useEffect(() => {
-        if (year) {
-            fetchBudgetSummary(year);
-        }
-    }, [year]);
-
-  const fetchAvailableYears = async () => {
+  const fetchAvailableYears = useCallback(async () => {
     try {
       const response = await fetch('http://localhost:5000/api/budget/years');
       if (!response.ok) {
@@ -26,36 +16,46 @@ const BudgetOverview = () => {
       }
       const years = await response.json();
       setAvailableYears(years);
-      if (years.length > 0 && !year) {
-        setYear(years[0]);
+      if (years.length > 0) {
+        setYear((prevYear) => prevYear || years[0]);
       }
     } catch (err) {
       console.error('Error fetching years:', err);
       // Set default years if API fails
       setAvailableYears([2024, 2023, 2022, 2021, 2020]);
-      setYear(2024);
+      setYear((prevYear) => prevYear || 2024);
     }
-  };
+  }, []);
 
-  const fetchBudgetSummary = async (selectedYear) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`http://localhost:5000/api/budget/summary/${selectedYear}`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setSummary(data);
-    } catch (err) {
-      const errorMessage = err.message || 'Failed to fetch budget data. Make sure the server is running on port 5000.';
-      setError(errorMessage);
-      console.error('Error fetching budget summary:', err);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    fetchAvailableYears();
+  }, [fetchAvailableYears]);
+
+  useEffect(() => {
+    if (year) {
+      fetchBudgetSummary(year);
     }
-  };
+  }, [year]);
+
+    const fetchBudgetSummary = async (selectedYear) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`http://localhost:5000/api/budget/summary/${selectedYear}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setSummary(data);
+        } catch (err) {
+            const errorMessage = err.message || 'Failed to fetch budget data. Make sure the server is running on port 5000.';
+            setError(errorMessage);
+            console.error('Error fetching budget summary:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('es-ES', {
