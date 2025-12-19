@@ -15,3 +15,14 @@ Summary of what we accomplished the second day of vibe coding:
 - ✅ All changes committed
 
 So from now on I am going to ask Cursor to create an MVP for a real app that can give value to a user. I am going to focus on politics. Let's see if I can achieve something.
+
+I decided a topic for this random app: Spanish expenses.
+
+The application now shows:
+- ✅ Spanish government budget data (hardcoded)
+- ✅ Income breakdown (7 categories)
+- ✅ Spending breakdown (9 categories)
+- ✅ Budget balance calculation
+- ✅ Year selector (2020-2024)
+
+
