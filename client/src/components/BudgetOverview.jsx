@@ -49,8 +49,8 @@ const BudgetOverview = () => {
             const data = await response.json();
             setSummary(data);
         } catch (err) {
-            const errorMessage = err.message || 'Failed to fetch budget data. Make sure the server is running on port 5000.';
-            setError(errorMessage);
+      const errorMessage = err.message || 'Error al cargar los datos del presupuesto. Asegúrate de que el servidor esté ejecutándose en el puerto 5000.';
+      setError(errorMessage);
             console.error('Error fetching budget summary:', err);
         } finally {
             setLoading(false);
@@ -66,35 +66,35 @@ const BudgetOverview = () => {
         }).format(amount);
     };
 
-    const formatCategoryName = (type) => {
-        const names = {
-            personal_income_tax: 'Personal Income Tax (IRPF)',
-            corporate_tax: 'Corporate Tax',
-            vat: 'VAT (IVA)',
-            social_security_contributions: 'Social Security Contributions',
-            autonomous_communities_taxes: 'Autonomous Communities Taxes',
-            eu_funds: 'EU Funds',
-            other_revenues: 'Other Revenues',
-            pensions: 'Pensions',
-            social_security: 'Social Security',
-            education: 'Education',
-            healthcare: 'Healthcare',
-            defense: 'Defense',
-            infrastructure: 'Infrastructure',
-            public_administration: 'Public Administration',
-            debt_interest: 'Debt Interest',
-            other_spending: 'Other Spending',
-        };
-        return names[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const formatCategoryName = (type) => {
+    const names = {
+      personal_income_tax: 'Impuesto sobre la Renta de las Personas Físicas (IRPF)',
+      corporate_tax: 'Impuesto de Sociedades',
+      vat: 'Impuesto sobre el Valor Añadido (IVA)',
+      social_security_contributions: 'Cotizaciones a la Seguridad Social',
+      autonomous_communities_taxes: 'Impuestos de las Comunidades Autónomas',
+      eu_funds: 'Fondos de la Unión Europea',
+      other_revenues: 'Otros Ingresos',
+      pensions: 'Pensiones',
+      social_security: 'Seguridad Social',
+      education: 'Educación',
+      healthcare: 'Sanidad',
+      defense: 'Defensa',
+      infrastructure: 'Infraestructuras',
+      public_administration: 'Administración Pública',
+      debt_interest: 'Intereses de la Deuda',
+      other_spending: 'Otros Gastos',
     };
+    return names[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
 
     if (loading) {
         return (
             <div className="budget-overview">
-                <div className="loader-container">
-                    <div className="loader"></div>
-                    <p>Loading budget data...</p>
-                </div>
+        <div className="loader-container">
+          <div className="loader"></div>
+          <p>Cargando datos del presupuesto...</p>
+        </div>
             </div>
         );
     }
@@ -105,10 +105,10 @@ const BudgetOverview = () => {
 
     return (
         <div className="budget-overview">
-            <div className="budget-header">
-                <h1>Spanish Government Budget</h1>
-                <div className="year-selector">
-                    <label htmlFor="year-select">Year: </label>
+      <div className="budget-header">
+        <h1>Presupuesto del Estado Español</h1>
+        <div className="year-selector">
+          <label htmlFor="year-select">Año: </label>
                     <select
                         id="year-select"
                         value={year}
@@ -155,24 +155,27 @@ const BudgetOverview = () => {
                         </div>
                     </div>
 
-                    <div className="budget-balance">
-                        <h2>Balance</h2>
-                        <div className={`balance-amount ${summary.balance >= 0 ? 'positive' : 'negative'}`}>
-                            {formatCurrency(summary.balance)}
-                        </div>
-                        {summary.balance < 0 && (
-                            <p className="deficit-warning">Budget Deficit</p>
-                        )}
-                    </div>
+          <div className="budget-balance">
+            <h2>Balance</h2>
+            <div className={`balance-amount ${summary.balance >= 0 ? 'positive' : 'negative'}`}>
+              {formatCurrency(summary.balance)}
+            </div>
+            {summary.balance < 0 && (
+              <p className="deficit-warning">Déficit Presupuestario</p>
+            )}
+            {summary.balance >= 0 && (
+              <p className="surplus-info">Superávit Presupuestario</p>
+            )}
+          </div>
                 </div>
             )}
 
-            {!summary && !loading && (
-                <div className="no-data">
-                    <p>No budget data available for {year}.</p>
-                    <p>Add data using the API or import from government sources.</p>
-                </div>
-            )}
+      {!summary && !loading && (
+        <div className="no-data">
+          <p>No hay datos de presupuesto disponibles para {year}.</p>
+          <p>Añade datos usando la API o importa desde fuentes gubernamentales.</p>
+        </div>
+      )}
         </div>
     );
 };

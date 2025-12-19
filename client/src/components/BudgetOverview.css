@@ -140,6 +140,12 @@
   margin-top: 10px;
 }
 
+.surplus-info {
+  color: #2e7d32;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
 .no-data {
   text-align: center;
   padding: 40px;
