@@ -259,13 +259,58 @@ function getHardcodedBudgetData(year: number) {
  *               example: [2024, 2023, 2022, 2021, 2020]
  */
 // Get available years
-router.get('/years', (req: Request, res: Response) => {
+router.get('/years', async (req: Request, res: Response) => {
   try {
-    // Check if MongoDB is connected quickly
+    // First, try to get years from CSV files
+    const fs = require('fs');
+    const path = require('path');
+    const { parse } = require('csv-parse/sync');
+
+    const dataDir = path.join(__dirname, '../../data/csv');
+    const yearColumnFiles = ['ingresos.csv', 'gastos.csv'];
+    const yearsSet = new Set<number>();
+
+    // Read years from CSV files
+    for (const filename of yearColumnFiles) {
+      try {
+        const filePath = path.join(dataDir, filename);
+        if (fs.existsSync(filePath)) {
+          const fileContent = fs.readFileSync(filePath, 'utf8');
+          const records = parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true,
+            encoding: 'utf8',
+          });
+
+          if (records.length > 0) {
+            const columns = Object.keys(records[0]);
+            // Extract year columns (format: 2016, 2017, 2023-P, etc.)
+            columns.slice(1).forEach((col: string) => {
+              const yearMatch = col.match(/^(\d{4})/);
+              if (yearMatch) {
+                const year = parseInt(yearMatch[1]);
+                if (!isNaN(year)) {
+                  yearsSet.add(year);
+                }
+              }
+            });
+          }
+        }
+      } catch (error) {
+        // Continue to next file
+      }
+    }
+
+    // If we found years in CSV files, return them
+    if (yearsSet.size > 0) {
+      const years = Array.from(yearsSet).sort((a, b) => b - a);
+      return res.json(years);
+    }
+
+    // Otherwise, check MongoDB
     const mongoose = require('mongoose');
     const isConnected = mongoose.connection.readyState === 1;
 
-    // Only try database if connected, otherwise return hardcoded years immediately
     if (isConnected) {
       BudgetItem.distinct('year')
         .then((years) => {
@@ -280,7 +325,7 @@ router.get('/years', (req: Request, res: Response) => {
           res.json([2024, 2023, 2022, 2021, 2020]);
         });
     } else {
-      // MongoDB not connected, return hardcoded years immediately
+      // MongoDB not connected, return hardcoded years
       res.json([2024, 2023, 2022, 2021, 2020]);
     }
   } catch (error) {

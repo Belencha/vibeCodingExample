@@ -9,6 +9,8 @@
 
 import axios from 'axios';
 import { parse } from 'csv-parse/sync';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface BudgetDataSource {
   url: string;
@@ -45,10 +47,194 @@ function getHaciendaCSVUrl(year: number): string {
 }
 
 /**
+ * Process CSV files where first column is concept and other columns are years
+ * Format: Concepto,2016,2017,2018,...
+ */
+function processYearColumnsCSV(csvRecords: any[], category: 'income' | 'spending'): any[] {
+  const budgetItems: any[] = [];
+
+  if (!csvRecords || csvRecords.length === 0) {
+    return [];
+  }
+
+  // Get all columns
+  const firstRecord = csvRecords[0];
+  const columns = Object.keys(firstRecord);
+
+  // First column should be the concept (Capítulos, Políticas, etc.)
+  const conceptColumn = columns[0];
+
+  // Other columns should be years (numeric)
+  const yearColumns = columns.slice(1).filter(col => {
+    // Check if column name is a year (4 digits) or year with suffix (like "2023-P")
+    return /^\d{4}(-P)?$/.test(col);
+  });
+
+  console.log(`   Concept column: ${conceptColumn}`);
+  console.log(`   Year columns found: ${yearColumns.join(', ')}`);
+
+  csvRecords.forEach((record) => {
+    const concept = String(record[conceptColumn] || '').trim();
+    if (!concept || concept === 'Total' || concept.toLowerCase().includes('total')) {
+      return; // Skip totals and empty rows
+    }
+
+    // Process each year column
+    yearColumns.forEach((yearCol) => {
+      const yearStr = yearCol.split('-')[0]; // Remove suffix like "-P"
+      const year = parseInt(yearStr);
+
+      if (isNaN(year)) {
+        return;
+      }
+
+      const amountStr = String(record[yearCol] || '').trim();
+      if (!amountStr) {
+        return;
+      }
+
+      // Parse amount - values are in millions with dot as decimal separator
+      // Example: "209880.90" means 209,880.90 millions = 209,880,900,000 euros
+      let cleaned = amountStr.replace(/[€$£¥\s]/g, '').trim();
+
+      // The CSV uses dot as decimal separator (English format)
+      // "209880.90" should be parsed as 209880.90
+      let amount = parseFloat(cleaned);
+
+      if (isNaN(amount) || amount <= 0) {
+        return;
+      }
+
+      // Convert from millions to euros
+      amount = amount * 1000000;
+
+      // Map concept to our type
+      const type = mapConceptToType(concept, category);
+
+      if (type) {
+        budgetItems.push({
+          year,
+          category,
+          type,
+          amount,
+          description: concept,
+        });
+      }
+    });
+  });
+
+  return budgetItems;
+}
+
+/**
+ * Try to read CSV from local files first
+ * Handles both traditional format and year-columns format
+ */
+function readLocalCSV(year: number): any[] {
+  const dataDir = path.join(__dirname, '../../data/csv');
+
+  // First, try to read ingresos.csv and gastos.csv (year-columns format)
+  const yearColumnFiles = ['ingresos.csv', 'gastos.csv'];
+  const yearColumnData: any[] = [];
+
+  for (const filename of yearColumnFiles) {
+    try {
+      const filePath = path.join(dataDir, filename);
+      if (fs.existsSync(filePath)) {
+        console.log(`📁 Reading local CSV file: ${filePath}`);
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+
+        if (fileContent && fileContent.length > 0) {
+          const records = parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true,
+            encoding: 'utf8',
+          });
+
+          if (records.length > 0) {
+            console.log(`✓ Successfully read ${records.length} records from local file: ${filename}`);
+            const category = filename.includes('ingresos') ? 'income' : 'spending';
+            const processed = processYearColumnsCSV(records, category);
+            yearColumnData.push(...processed);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.log(`⚠ Error reading local file ${filename}: ${error.message}`);
+    }
+  }
+
+  // If we got data from year-columns format, return it
+  if (yearColumnData.length > 0) {
+    console.log(`✓ Processed ${yearColumnData.length} budget items from year-columns CSV files`);
+    return yearColumnData;
+  }
+
+  // Otherwise, try traditional format files
+  const possibleFiles = [
+    `${year}_liquidacion.csv`,
+    `${year}_liquidacion_presupuesto.csv`,
+    `${year}_presupuesto.csv`,
+    `${year}_gastos.csv`,
+    `${year}_ingresos.csv`,
+    'liquidacion.csv',
+    'presupuesto.csv',
+  ];
+
+  for (const filename of possibleFiles) {
+    try {
+      const filePath = path.join(dataDir, filename);
+      if (fs.existsSync(filePath)) {
+        console.log(`📁 Reading local CSV file: ${filePath}`);
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+
+        if (fileContent && fileContent.length > 0) {
+          const records = parse(fileContent, {
+            columns: true,
+            skip_empty_lines: true,
+            encoding: 'utf8',
+          });
+
+          if (records.length > 0) {
+            console.log(`✓ Successfully read ${records.length} records from local file: ${filename}`);
+            return records;
+          }
+        }
+      }
+    } catch (error: any) {
+      console.log(`⚠ Error reading local file ${filename}: ${error.message}`);
+    }
+  }
+
+  return [];
+}
+
+/**
  * Fetch CSV data from Ministerio de Hacienda
  * Tries multiple possible file names
  */
 async function fetchHaciendaCSV(year: number): Promise<any[]> {
+  // First, try to read from local files
+  const localData = readLocalCSV(year);
+
+  // If we got processed data (from year-columns format), return it directly
+  if (localData.length > 0 && localData[0].year !== undefined) {
+    // This is already processed data, filter by year if needed
+    const filtered = localData.filter((item: any) => item.year === year);
+    if (filtered.length > 0) {
+      return filtered;
+    }
+    // If no data for this year, return all data (the route will handle filtering)
+    return localData;
+  }
+
+  // Otherwise, this is raw CSV data that needs normalization
+  if (localData.length > 0) {
+    return localData;
+  }
+
+  // If no local files, try to download from URL
+  console.log(`🌐 No local CSV files found, trying to download from Ministerio de Hacienda...`);
   const possibleFiles = [
     'liquidacion.csv',
     'liquidacion_presupuesto.csv',
@@ -57,19 +243,24 @@ async function fetchHaciendaCSV(year: number): Promise<any[]> {
     'ingresos.csv',
   ];
 
+  const baseUrl = getHaciendaCSVUrl(year);
+  console.log(`   Base URL: ${baseUrl}`);
+
   for (const filename of possibleFiles) {
     try {
-      const csvUrl = `${getHaciendaCSVUrl(year)}${filename}`;
+      const csvUrl = `${baseUrl}${filename}`;
+      console.log(`   Trying: ${csvUrl}`);
 
       const response = await axios.get(csvUrl, {
         responseType: 'text',
-        timeout: 10000,
+        timeout: 15000,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; BudgetApp/1.0)',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
       });
 
       if (response.data && response.data.length > 0) {
+        console.log(`   ✓ Got response (${response.data.length} bytes)`);
         const records = parse(response.data, {
           columns: true,
           skip_empty_lines: true,
@@ -77,18 +268,26 @@ async function fetchHaciendaCSV(year: number): Promise<any[]> {
         });
 
         if (records.length > 0) {
-          console.log(`Successfully fetched CSV from ${csvUrl}`);
+          console.log(`✓ Successfully fetched ${records.length} records from ${csvUrl}`);
+          console.log(`   Sample columns: ${Object.keys(records[0]).join(', ')}`);
           return records;
+        } else {
+          console.log(`   ⚠ File downloaded but no records parsed`);
         }
       }
     } catch (error: any) {
-      // Continue to next file if this one fails
-      if (error.response?.status !== 404) {
-        console.log(`Tried ${filename}, got error: ${error.message}`);
+      // Log detailed error information
+      if (error.response) {
+        console.log(`   ✗ ${filename}: HTTP ${error.response.status} - ${error.response.statusText}`);
+      } else if (error.request) {
+        console.log(`   ✗ ${filename}: No response received (timeout or network error)`);
+      } else {
+        console.log(`   ✗ ${filename}: ${error.message}`);
       }
     }
   }
 
+  console.log(`⚠ Could not fetch CSV from any URL`);
   return [];
 }
 
@@ -133,29 +332,39 @@ function normalizeCSVData(csvRecords: any[], year: number): any[] {
   const budgetItems: any[] = [];
 
   if (!csvRecords || csvRecords.length === 0) {
+    console.log('⚠ No CSV records to normalize');
     return [];
   }
 
   // Get column names (case-insensitive)
   const firstRecord = csvRecords[0];
   const columns = Object.keys(firstRecord);
+  console.log(`📊 CSV columns found: ${columns.join(', ')}`);
+  console.log(`📊 Sample record:`, JSON.stringify(firstRecord, null, 2));
 
   // Find amount column (try different possible names)
   const amountColumn = columns.find(col =>
-    ['importe', 'amount', 'cantidad', 'valor', 'total', 'euros'].includes(col.toLowerCase())
+    ['importe', 'amount', 'cantidad', 'valor', 'total', 'euros', 'liquidado', 'ejecutado', 'presupuestado'].includes(col.toLowerCase())
   );
 
   // Find concept/description column
   const conceptColumn = columns.find(col =>
-    ['concepto', 'concept', 'descripcion', 'description', 'nombre', 'name', 'tipo'].includes(col.toLowerCase())
+    ['concepto', 'concept', 'descripcion', 'description', 'nombre', 'name', 'tipo', 'denominacion', 'capitulo'].includes(col.toLowerCase())
   );
 
   // Find category/type column
   const categoryColumn = columns.find(col =>
-    ['tipo', 'type', 'categoria', 'category', 'clase', 'clasificacion'].includes(col.toLowerCase())
+    ['tipo', 'type', 'categoria', 'category', 'clase', 'clasificacion', 'naturaleza'].includes(col.toLowerCase())
   );
 
-  csvRecords.forEach((record) => {
+  console.log(`   Amount column: ${amountColumn || 'NOT FOUND'}`);
+  console.log(`   Concept column: ${conceptColumn || 'NOT FOUND'}`);
+  console.log(`   Category column: ${categoryColumn || 'NOT FOUND'}`);
+
+  let processedCount = 0;
+  let skippedCount = 0;
+
+  csvRecords.forEach((record, index) => {
     try {
       // Try to extract amount from various column names
       let amountStr = '';
@@ -174,21 +383,35 @@ function normalizeCSVData(csvRecords: any[], year: number): any[] {
 
       // Parse amount (handle Spanish number format: 1.234,56)
       const amount = parseAmount(amountStr);
-      if (amount <= 0) return;
+      if (amount <= 0) {
+        skippedCount++;
+        return;
+      }
 
-      // Determine category
+      // Determine category - try multiple strategies
       let category = 'spending'; // default
+
+      // Strategy 1: Check category column
       if (categoryColumn) {
         const categoryValue = String(record[categoryColumn] || '').toLowerCase();
-        if (categoryValue.includes('ingreso') || categoryValue.includes('revenue') || categoryValue.includes('income')) {
+        if (categoryValue.includes('ingreso') || categoryValue.includes('revenue') || categoryValue.includes('income') || categoryValue.includes('i')) {
           category = 'income';
-        } else if (categoryValue.includes('gasto') || categoryValue.includes('spending') || categoryValue.includes('expense')) {
+        } else if (categoryValue.includes('gasto') || categoryValue.includes('spending') || categoryValue.includes('expense') || categoryValue.includes('g')) {
           category = 'spending';
         }
       }
 
-      // Get concept/description
+      // Strategy 2: Check if filename or URL suggests category
+      // Strategy 3: Infer from concept/description
       const concept = conceptColumn ? String(record[conceptColumn] || '') : '';
+      const conceptLower = concept.toLowerCase();
+
+      // If we still don't know, try to infer from concept
+      if (category === 'spending' && !categoryColumn) {
+        if (conceptLower.includes('ingreso') || conceptLower.includes('revenue') || conceptLower.includes('impuesto') || conceptLower.includes('tributo')) {
+          category = 'income';
+        }
+      }
 
       // Map concept to our type
       const type = mapConceptToType(concept, category);
@@ -201,13 +424,23 @@ function normalizeCSVData(csvRecords: any[], year: number): any[] {
           amount,
           description: concept || '',
         });
+        processedCount++;
+      } else {
+        skippedCount++;
+        if (index < 5) {
+          console.log(`   Skipped record ${index}: concept="${concept}", category="${category}"`);
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       // Skip records that can't be parsed
-      console.log(`Skipping record due to parse error: ${error}`);
+      skippedCount++;
+      if (index < 5) {
+        console.log(`   Error parsing record ${index}: ${error.message}`);
+      }
     }
   });
 
+  console.log(`✓ Normalized ${processedCount} budget items (skipped ${skippedCount})`);
   return budgetItems;
 }
 
@@ -261,22 +494,79 @@ function mapConceptToType(concept: string, category: string): string | null {
   const conceptLower = concept.toLowerCase();
 
   if (category === 'income') {
-    if (conceptLower.includes('irpf') || conceptLower.includes('renta')) return 'personal_income_tax';
-    if (conceptLower.includes('sociedades') || conceptLower.includes('corporativo')) return 'corporate_tax';
-    if (conceptLower.includes('iva')) return 'vat';
-    if (conceptLower.includes('seguridad social') || conceptLower.includes('cotizaciones')) return 'social_security_contributions';
-    if (conceptLower.includes('comunidad') || conceptLower.includes('autónoma')) return 'autonomous_communities_taxes';
-    if (conceptLower.includes('ue') || conceptLower.includes('europa') || conceptLower.includes('fondo europeo')) return 'eu_funds';
+    // Direct taxes
+    if (conceptLower.includes('impuestos directos') || conceptLower.includes('irpf') || conceptLower.includes('renta')) {
+      return 'personal_income_tax';
+    }
+    // Corporate tax
+    if (conceptLower.includes('sociedades') || conceptLower.includes('corporativo')) {
+      return 'corporate_tax';
+    }
+    // Indirect taxes (VAT)
+    if (conceptLower.includes('impuestos indirectos') || conceptLower.includes('iva')) {
+      return 'vat';
+    }
+    // Social security contributions
+    if (conceptLower.includes('seguridad social') || conceptLower.includes('cotizaciones')) {
+      return 'social_security_contributions';
+    }
+    // Autonomous communities
+    if (conceptLower.includes('comunidad') || conceptLower.includes('autónoma') || conceptLower.includes('territorial')) {
+      return 'autonomous_communities_taxes';
+    }
+    // EU funds
+    if (conceptLower.includes('ue') || conceptLower.includes('europa') || conceptLower.includes('fondo europeo')) {
+      return 'eu_funds';
+    }
+    // Other revenues (fees, transfers, etc.)
+    if (conceptLower.includes('tasas') || conceptLower.includes('precios') || conceptLower.includes('transferencias') ||
+      conceptLower.includes('patrimoniales') || conceptLower.includes('enajenación')) {
+      return 'other_revenues';
+    }
+    // Default for income
     return 'other_revenues';
   } else {
-    if (conceptLower.includes('pension')) return 'pensions';
-    if (conceptLower.includes('seguridad social') || conceptLower.includes('sanidad') || conceptLower.includes('salud')) return 'social_security';
-    if (conceptLower.includes('educación') || conceptLower.includes('educacion')) return 'education';
-    if (conceptLower.includes('sanidad') || conceptLower.includes('salud')) return 'healthcare';
-    if (conceptLower.includes('defensa') || conceptLower.includes('militar')) return 'defense';
-    if (conceptLower.includes('infraestructura') || conceptLower.includes('obra pública')) return 'infrastructure';
-    if (conceptLower.includes('administración') || conceptLower.includes('administracion')) return 'public_administration';
-    if (conceptLower.includes('interés') || conceptLower.includes('interes') || conceptLower.includes('deuda')) return 'debt_interest';
+    // Pensions
+    if (conceptLower.includes('pension')) {
+      return 'pensions';
+    }
+    // Social security / Healthcare
+    if (conceptLower.includes('seguridad social') || conceptLower.includes('sanidad') || conceptLower.includes('salud')) {
+      return 'social_security';
+    }
+    // Education
+    if (conceptLower.includes('educación') || conceptLower.includes('educacion')) {
+      return 'education';
+    }
+    // Healthcare (separate from social security)
+    if (conceptLower.includes('sanidad') || conceptLower.includes('salud')) {
+      return 'healthcare';
+    }
+    // Defense
+    if (conceptLower.includes('defensa') || conceptLower.includes('militar')) {
+      return 'defense';
+    }
+    // Infrastructure
+    if (conceptLower.includes('infraestructura') || conceptLower.includes('infraestructuras') || conceptLower.includes('obra pública')) {
+      return 'infrastructure';
+    }
+    // Public administration
+    if (conceptLower.includes('administración') || conceptLower.includes('administracion') ||
+      conceptLower.includes('personal') || conceptLower.includes('bienes y servicios')) {
+      return 'public_administration';
+    }
+    // Debt interest
+    if (conceptLower.includes('interés') || conceptLower.includes('interes') || conceptLower.includes('deuda') ||
+      conceptLower.includes('gastos financieros') || conceptLower.includes('deuda pública')) {
+      return 'debt_interest';
+    }
+    // Other spending
+    if (conceptLower.includes('transferencias') || conceptLower.includes('contingencia') ||
+      conceptLower.includes('inversiones') || conceptLower.includes('desempleo') ||
+      conceptLower.includes('prestaciones') || conceptLower.includes('servicios sociales')) {
+      return 'other_spending';
+    }
+    // Default for spending
     return 'other_spending';
   }
 }
@@ -286,33 +576,54 @@ function mapConceptToType(concept: string, category: string): string | null {
  * Tries multiple sources in order of preference
  */
 export async function fetchBudgetData(year: number): Promise<any[]> {
-  console.log(`Fetching real budget data for year ${year}...`);
+  console.log(`\n🔍 Fetching real budget data for year ${year}...`);
 
   try {
-    // Strategy 1: Try Ministerio de Hacienda CSV files
-    console.log('Trying Ministerio de Hacienda CSV files...');
+    // Strategy 1: Try Ministerio de Hacienda CSV files (local first, then remote)
+    console.log('\n📥 Strategy 1: Ministerio de Hacienda CSV files');
     const csvData = await fetchHaciendaCSV(year);
 
     if (csvData.length > 0) {
-      const normalized = normalizeCSVData(csvData, year);
-      if (normalized.length > 0) {
-        console.log(`✓ Successfully fetched ${normalized.length} budget items from CSV`);
-        return normalized;
+      // Check if data is already processed (has year, category, type properties)
+      const isProcessed = csvData[0] && csvData[0].year !== undefined && csvData[0].category !== undefined;
+
+      if (isProcessed) {
+        // Data is already processed, filter by year and return
+        const filtered = csvData.filter((item: any) => item.year === year);
+        console.log(`✅ Found ${filtered.length} budget items for year ${year} (from ${csvData.length} total items)\n`);
+        return filtered;
+      } else {
+        // Data needs normalization
+        console.log(`   Found ${csvData.length} raw CSV records`);
+        const normalized = normalizeCSVData(csvData, year);
+        if (normalized.length > 0) {
+          console.log(`✅ Successfully fetched ${normalized.length} budget items from CSV\n`);
+          return normalized;
+        } else {
+          console.log(`   ⚠ CSV data found but could not normalize any records\n`);
+        }
       }
+    } else {
+      console.log(`   ⚠ No CSV data found\n`);
     }
 
     // Strategy 2: Try datos.gob.es API
-    console.log('Trying datos.gob.es API...');
+    console.log('📥 Strategy 2: datos.gob.es API');
     const datosGobData = await fetchDatosGobES(year);
     if (datosGobData.length > 0) {
-      console.log(`✓ Successfully fetched ${datosGobData.length} budget items from datos.gob.es`);
+      console.log(`✅ Successfully fetched ${datosGobData.length} budget items from datos.gob.es\n`);
       return datosGobData;
+    } else {
+      console.log(`   ⚠ No data from datos.gob.es\n`);
     }
 
-    console.log('⚠ No real data available from any source');
+    console.log('⚠ No real data available from any source - will use hardcoded data\n');
     return [];
   } catch (error: any) {
-    console.error('Error fetching budget data:', error.message);
+    console.error(`❌ Error fetching budget data: ${error.message}`);
+    if (error.stack) {
+      console.error(`   Stack: ${error.stack}`);
+    }
     return [];
   }
 }
