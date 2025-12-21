@@ -101,14 +101,28 @@ router.get('/summary/:year', async (req: Request, res: Response) => {
 
     // If we have real data, process and return it
     if (realData.length > 0) {
+      // Group by description/concept (each CSV row is a separate budget item)
+      // Use conceptId if available, otherwise use description as identifier
       const incomeItems = realData
         .filter(item => item.category === 'income')
         .reduce((acc: any[], item) => {
-          const existing = acc.find(i => i._id === item.type);
+          // Ensure we have a valid description
+          if (!item.description || !item.description.trim()) {
+            console.warn('⚠ Income item missing description:', item);
+            return acc;
+          }
+
+          const id = item.conceptId || item.description.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+          const existing = acc.find(i => i._id === id);
           if (existing) {
             existing.total += item.amount;
           } else {
-            acc.push({ _id: item.type, total: item.amount });
+            acc.push({
+              _id: id,
+              total: item.amount,
+              description: item.description.trim(), // Ensure description is present
+              type: item.type || 'other_revenues' // Keep type for categorization
+            });
           }
           return acc;
         }, []);
@@ -116,14 +130,30 @@ router.get('/summary/:year', async (req: Request, res: Response) => {
       const spendingItems = realData
         .filter(item => item.category === 'spending')
         .reduce((acc: any[], item) => {
-          const existing = acc.find(i => i._id === item.type);
+          // Ensure we have a valid description
+          if (!item.description || !item.description.trim()) {
+            console.warn('⚠ Spending item missing description:', item);
+            return acc;
+          }
+
+          const id = item.conceptId || item.description.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+          const existing = acc.find(i => i._id === id);
           if (existing) {
             existing.total += item.amount;
           } else {
-            acc.push({ _id: item.type, total: item.amount });
+            acc.push({
+              _id: id,
+              total: item.amount,
+              description: item.description.trim(), // Ensure description is present
+              type: item.type || 'other_spending' // Keep type for categorization
+            });
           }
           return acc;
         }, []);
+
+      // Sort items by amount (descending)
+      incomeItems.sort((a, b) => b.total - a.total);
+      spendingItems.sort((a, b) => b.total - a.total);
 
       const totalIncome = incomeItems.reduce((sum, item) => sum + item.total, 0);
       const totalSpending = spendingItems.reduce((sum, item) => sum + item.total, 0);
@@ -189,9 +219,9 @@ router.get('/summary/:year', async (req: Request, res: Response) => {
       res.json(hardcodedData);
     }
     */
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in budget summary route:', error);
-    res.status(500).json({ error: 'Error fetching budget summary', details: error.message });
+    res.status(500).json({ error: 'Error fetching budget summary', details: error?.message || 'Unknown error' });
   }
 });
 

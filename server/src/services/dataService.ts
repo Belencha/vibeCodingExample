@@ -60,9 +60,22 @@ function processYearColumnsCSV(csvRecords: any[], category: 'income' | 'spending
   // Get all columns
   const firstRecord = csvRecords[0];
   const columns = Object.keys(firstRecord);
-
+  
   // First column should be the concept (Capítulos, Políticas, etc.)
-  const conceptColumn = columns[0];
+  // Find the concept column - it should be the first non-numeric column
+  let conceptColumn = columns[0];
+  
+  // If the first column looks like a year, try to find a better concept column
+  if (/^\d{4}/.test(conceptColumn)) {
+    // Look for a column that doesn't look like a year
+    const nonYearColumn = columns.find(col => !/^\d{4}/.test(col));
+    if (nonYearColumn) {
+      conceptColumn = nonYearColumn;
+    }
+  }
+  
+  console.log(`   All columns: ${columns.join(', ')}`);
+  console.log(`   Using concept column: "${conceptColumn}"`);
 
   // Other columns should be years (numeric)
   const yearColumns = columns.slice(1).filter(col => {
@@ -72,11 +85,31 @@ function processYearColumnsCSV(csvRecords: any[], category: 'income' | 'spending
 
   console.log(`   Concept column: ${conceptColumn}`);
   console.log(`   Year columns found: ${yearColumns.join(', ')}`);
+  console.log(`   First record sample:`, JSON.stringify(firstRecord, null, 2));
 
-  csvRecords.forEach((record) => {
+  csvRecords.forEach((record, recordIndex) => {
+    // Get the concept from the first column
     const concept = String(record[conceptColumn] || '').trim();
-    if (!concept || concept === 'Total' || concept.toLowerCase().includes('total')) {
-      return; // Skip totals and empty rows
+    
+    // Debug first few records
+    if (recordIndex < 3) {
+      console.log(`   Record ${recordIndex}: conceptColumn="${conceptColumn}", concept="${concept}"`);
+      console.log(`   Full record:`, JSON.stringify(record, null, 2));
+    }
+    
+    // Skip if:
+    // - Empty concept
+    // - Concept is the column name itself (header row)
+    // - Concept contains "total" (case insensitive)
+    // - Concept is purely numeric (a value, not a description)
+    if (!concept || 
+        concept === conceptColumn || 
+        concept.toLowerCase().includes('total') || 
+        /^\d+\.?\d*$/.test(concept)) {
+      if (recordIndex < 3) {
+        console.log(`   ⚠ Skipping record ${recordIndex}: concept="${concept}" (empty/header/total/numeric)`);
+      }
+      return;
     }
 
     // Process each year column
@@ -108,17 +141,40 @@ function processYearColumnsCSV(csvRecords: any[], category: 'income' | 'spending
       // Convert from millions to euros
       amount = amount * 1000000;
 
-      // Map concept to our type
-      const type = mapConceptToType(concept, category);
+      // Use concept as unique identifier (each CSV row is a separate budget item)
+      // Create a slug from the concept for use as _id
+      const conceptSlug = concept
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
 
-      if (type) {
-        budgetItems.push({
-          year,
-          category,
-          type,
-          amount,
-          description: concept,
-        });
+      // Map concept to a type for categorization (optional, for filtering)
+      const type = mapConceptToType(concept, category) || 'other_' + (category === 'income' ? 'revenues' : 'spending');
+
+      // Final validation: ensure concept is not numeric and is a valid description
+      if (!concept || /^\d+\.?\d*$/.test(concept) || concept.length < 3) {
+        console.warn(`   ⚠ Skipping item with invalid concept: "${concept}" (record index: ${recordIndex}, year: ${year})`);
+        return;
+      }
+
+      // Double-check: concept should not be a year or numeric value
+      if (/^\d{4}/.test(concept) || parseFloat(concept).toString() === concept) {
+        console.warn(`   ⚠ Skipping item - concept appears to be numeric/year: "${concept}"`);
+        return;
+      }
+
+      budgetItems.push({
+        year,
+        category,
+        type, // Keep type for backward compatibility and filtering
+        amount,
+        description: concept, // Full description from CSV (e.g., "Impuestos directos")
+        conceptId: conceptSlug, // Unique identifier for this concept
+      });
+      
+      // Debug first few items
+      if (budgetItems.length <= 3) {
+        console.log(`   Created item: description="${concept}", amount=${amount}, year=${year}`);
       }
     });
   });
@@ -153,8 +209,11 @@ function readLocalCSV(year: number): any[] {
 
           if (records.length > 0) {
             console.log(`✓ Successfully read ${records.length} records from local file: ${filename}`);
+            console.log(`   First record keys:`, Object.keys(records[0]));
+            console.log(`   First record sample:`, JSON.stringify(records[0], null, 2));
             const category = filename.includes('ingresos') ? 'income' : 'spending';
             const processed = processYearColumnsCSV(records, category);
+            console.log(`   Processed ${processed.length} items, first item:`, processed[0] ? JSON.stringify(processed[0], null, 2) : 'none');
             yearColumnData.push(...processed);
           }
         }

@@ -67,7 +67,23 @@ const BudgetOverview = () => {
         }).format(amount);
     };
 
-    const formatCategoryName = (type) => {
+    const formatCategoryName = (item) => {
+        // Handle case where item might not be an object
+        if (!item || typeof item !== 'object') {
+            return String(item || '');
+        }
+
+        // If item has a description, use it (real data from CSV)
+        if (item.description && item.description.trim()) {
+            return item.description;
+        }
+
+        // If item has a name property (from chart data), use it
+        if (item.name) {
+            return item.name;
+        }
+
+        // Otherwise, use the type mapping (for hardcoded data)
         const names = {
             personal_income_tax: 'Impuesto sobre la Renta de las Personas Físicas (IRPF)',
             corporate_tax: 'Impuesto de Sociedades',
@@ -86,13 +102,25 @@ const BudgetOverview = () => {
             debt_interest: 'Intereses de la Deuda',
             other_spending: 'Otros Gastos',
         };
-        return names[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+        const type = item.type || item._id;
+        if (type && names[type]) {
+            return names[type];
+        }
+
+        // If _id is a string that looks like a description, use it
+        if (typeof item._id === 'string' && item._id.length > 3 && !item._id.match(/^\d+\.?\d*$/)) {
+            return item._id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        // Last resort: format the type
+        return typeof type === 'string' ? type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Sin nombre';
     };
 
     // Prepare data for pie charts
     const prepareChartData = (items, total) => {
         return items.map((item) => ({
-            name: formatCategoryName(item._id),
+            name: formatCategoryName(item),
             value: item.total,
             percentage: ((item.total / total) * 100).toFixed(1),
         }));
@@ -180,8 +208,8 @@ const BudgetOverview = () => {
                             {summary.income.items.map((item, index) => {
                                 const percentage = ((item.total / summary.income.total) * 100).toFixed(1);
                                 return (
-                                    <div key={index} className="budget-item">
-                                        <span className="item-type">{formatCategoryName(item._id)}</span>
+                                    <div key={item._id || index} className="budget-item">
+                                        <span className="item-type">{formatCategoryName(item)}</span>
                                         <span className="item-details">
                                             <span className="item-amount">{formatCurrency(item.total)}</span>
                                             <span className="item-percentage">({percentage}%)</span>
@@ -223,8 +251,8 @@ const BudgetOverview = () => {
                             {summary.spending.items.map((item, index) => {
                                 const percentage = ((item.total / summary.spending.total) * 100).toFixed(1);
                                 return (
-                                    <div key={index} className="budget-item">
-                                        <span className="item-type">{formatCategoryName(item._id)}</span>
+                                    <div key={item._id || index} className="budget-item">
+                                        <span className="item-type">{formatCategoryName(item)}</span>
                                         <span className="item-details">
                                             <span className="item-amount">{formatCurrency(item.total)}</span>
                                             <span className="item-percentage">({percentage}%)</span>
